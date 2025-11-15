@@ -1,0 +1,17 @@
+# Digital Signature Algorithm Performance Analysis
+# Project Dependencies
+
+# Classical Cryptography (RSA, ECDSA, EdDSA)
+cryptography>=46.0.0
+
+# Post-Quantum Cryptography (Dilithium, SPHINCS+)
+# Note: Requires liboqs system library installed
+# macOS: brew install liboqs
+# Linux: sudo apt install liboqs-dev
+liboqs-python>=0.14.0
+
+# Data Analysis and Statistics
+numpy>=2.0.0
+
+# System telemetry
+psutil>=5.9.0

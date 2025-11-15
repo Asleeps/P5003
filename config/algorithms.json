@@ -1,0 +1,153 @@
+{
+  "security_levels": {
+    "level_1": {
+      "bits": 128,
+      "description": "NIST Security Level 1 (AES-128 equivalent)"
+    },
+    "level_3": {
+      "bits": 192,
+      "description": "NIST Security Level 3 (AES-192 equivalent)"
+    },
+    "level_5": {
+      "bits": 256,
+      "description": "NIST Security Level 5 (AES-256 equivalent)"
+    }
+  },
+  "classical": {
+    "RSA": {
+      "variants": [
+        {
+          "name": "RSA-3072",
+          "key_size": 3072,
+          "security_level": "level_1",
+          "openssl_name": "RSA",
+          "openssl_params": {"bits": 3072}
+        },
+        {
+          "name": "RSA-7680",
+          "key_size": 7680,
+          "security_level": "level_3",
+          "openssl_name": "RSA",
+          "openssl_params": {"bits": 7680}
+        },
+        {
+          "name": "RSA-15360",
+          "key_size": 15360,
+          "security_level": "level_5",
+          "openssl_name": "RSA",
+          "openssl_params": {"bits": 15360}
+        }
+      ]
+    },
+    "ECDSA": {
+      "variants": [
+        {
+          "name": "ECDSA-P256",
+          "curve": "secp256r1",
+          "security_level": "level_1",
+          "openssl_name": "EC",
+          "openssl_params": {"curve": "secp256r1"}
+        },
+        {
+          "name": "ECDSA-P384",
+          "curve": "secp384r1",
+          "security_level": "level_3",
+          "openssl_name": "EC",
+          "openssl_params": {"curve": "secp384r1"}
+        },
+        {
+          "name": "ECDSA-P521",
+          "curve": "secp521r1",
+          "security_level": "level_5",
+          "openssl_name": "EC",
+          "openssl_params": {"curve": "secp521r1"}
+        }
+      ]
+    },
+    "EdDSA": {
+      "variants": [
+        {
+          "name": "Ed25519",
+          "curve": "ed25519",
+          "security_level": "level_1",
+          "openssl_name": "Ed25519",
+          "openssl_params": {}
+        },
+        {
+          "name": "Ed448",
+          "curve": "ed448",
+          "security_level": "level_3",
+          "openssl_name": "Ed448",
+          "openssl_params": {}
+        }
+      ]
+    }
+  },
+  "post_quantum": {
+    "Dilithium": {
+      "variants": [
+        {
+          "name": "Dilithium2",
+          "security_level": "level_1",
+          "liboqs_name": "Dilithium2"
+        },
+        {
+          "name": "Dilithium3",
+          "security_level": "level_3",
+          "liboqs_name": "Dilithium3"
+        },
+        {
+          "name": "Dilithium5",
+          "security_level": "level_5",
+          "liboqs_name": "Dilithium5"
+        }
+      ]
+    },
+    "SPHINCS+": {
+      "variants": [
+        {
+          "name": "SPHINCS+-SHA2-128f-simple",
+          "hash": "SHA2",
+          "security_level": "level_1",
+          "variant": "fast",
+          "liboqs_name": "SPHINCS+-SHA2-128f-simple"
+        },
+        {
+          "name": "SPHINCS+-SHA2-128s-simple",
+          "hash": "SHA2",
+          "security_level": "level_1",
+          "variant": "small",
+          "liboqs_name": "SPHINCS+-SHA2-128s-simple"
+        },
+        {
+          "name": "SPHINCS+-SHA2-192f-simple",
+          "hash": "SHA2",
+          "security_level": "level_3",
+          "variant": "fast",
+          "liboqs_name": "SPHINCS+-SHA2-192f-simple"
+        },
+        {
+          "name": "SPHINCS+-SHA2-192s-simple",
+          "hash": "SHA2",
+          "security_level": "level_3",
+          "variant": "small",
+          "liboqs_name": "SPHINCS+-SHA2-192s-simple"
+        },
+        {
+          "name": "SPHINCS+-SHA2-256f-simple",
+          "hash": "SHA2",
+          "security_level": "level_5",
+          "variant": "fast",
+          "liboqs_name": "SPHINCS+-SHA2-256f-simple"
+        },
+        {
+          "name": "SPHINCS+-SHA2-256s-simple",
+          "hash": "SHA2",
+          "security_level": "level_5",
+          "variant": "small",
+          "liboqs_name": "SPHINCS+-SHA2-256s-simple"
+        }
+      ]
+    }
+  }
+}

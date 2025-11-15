@@ -1,0 +1,63 @@
+{
+  "platform": {
+    "cpu": "Apple M4 (10-core)",
+    "memory_gb": 16,
+    "os": "macOS",
+    "note": "Performance cores pinned for consistent results"
+  },
+  "experiment_params": {
+    "message_size_bytes": 32,
+    "note": "Common parameters across all experiments"
+  },
+  "parallelism": {
+    "thread_counts": [1, 2, 4, 6, 8, 10],
+    "duration_sec": 12,
+    "analysis_window_sec": 10,
+    "warmup_duration_sec": 1,
+    "sample_interval_sec": 0.25,
+    "max_latency_samples": 1024,
+    "cache_dir": "data/cache",
+    "cpu_affinity": {
+      "enabled": true,
+      "performance_cores": [0, 1, 2, 3, 4, 5],
+      "efficiency_cores": [6, 7, 8, 9],
+      "strategy": "performance_first",
+      "note": "Pin processes to performance cores first, then spill to efficiency cores for worker_count >= 9"
+    },
+    "measurement": {
+      "collect_latencies": true,
+      "collect_cpu_percent": true,
+      "collect_memory": true,
+      "note": "Per-operation latency samples plus periodic CPU/memory telemetry"
+    },
+    "powermetrics": {
+      "enabled": true,
+      "binary": "/usr/bin/powermetrics",
+      "samplers": ["cpu_power"],
+      "sample_interval_sec": 1.0,
+      "note": "Requires sudo to access power metrics; use cpu_power sampler on Apple Silicon"
+    },
+    "advanced": {
+      "sphincs_intra_parallel": false,
+      "note": "Enable intra-operation parallelism for SPHINCS+ (requires OpenMP support, future work)"
+    }
+  },
+  "scenario_params": {
+    "tls": {
+      "initcwnd_bytes": 14336,
+      "cert_chain_levels": 2
+    },
+    "jwt": {
+      "http_header_limit_bytes": 8192,
+      "sign_verify_ratio": 1000000
+    },
+    "code_signing": {
+      "binaries_per_app": 20
+    },
+    "dnssec": {
+      "udp_limit_bytes": 512,
+      "edns_limit_bytes": 1232,
+      "base_response_bytes": 80
+    }
+  }
+}
