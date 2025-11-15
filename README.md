@@ -4,7 +4,6 @@
 
 This project provides a comprehensive framework for benchmarking and analyzing the performance of classical (RSA, ECDSA, EdDSA) and post-quantum (CRYSTALS-Dilithium, SPHINCS+) digital signature algorithms. It goes beyond simple performance metrics by modeling their impact in real-world scenarios like TLS, JWT, code signing, and DNSSEC, with a special focus on the constraints of Python's Global Interpreter Lock (GIL).
 
-The full experimental design is detailed in `experiment_design.md`.
 
 ---
 
@@ -35,7 +34,6 @@ P5003/
 │   ├── scenarios/       # Real-world scenario models (TLS, JWT, etc.)
 │   └── utils/           # Helper utilities (timer, stats, power)
 ├── tests/               # Unit tests for algorithm correctness
-├── experiment_design.md # In-depth experimental design document
 ├── setup.sh             # Project setup and installation script
 └── requirements.txt     # Python dependencies
 ```
