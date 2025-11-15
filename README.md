@@ -1,9 +1,12 @@
 # P5003: Benchmarking Classical and Post-Quantum Digital Signatures
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/release/python-390/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](https://www.apple.com/macos/)
 
-This project provides a comprehensive framework for benchmarking and analyzing the performance of classical (RSA, ECDSA, EdDSA) and post-quantum (CRYSTALS-Dilithium, SPHINCS+) digital signature algorithms. It goes beyond simple performance metrics by modeling their impact in real-world scenarios like TLS, JWT, code signing, and DNSSEC, with a special focus on the constraints of Python's Global Interpreter Lock (GIL).
+A comprehensive benchmarking framework for classical (RSA, ECDSA, EdDSA) and post-quantum (CRYSTALS-Dilithium, SPHINCS+) digital signature algorithms, with real-world scenario modeling for TLS, JWT, code signing, and DNSSEC.
 
+📖 **Detailed experimental design**: See [experiment_design.md](experiment_design.md)
 
 ---
 
@@ -50,7 +53,7 @@ P5003/
 
 1.  **Clone the repository:**
     ```bash
-    git clone <your-repo-url>
+    git clone https://github.com/Asleeps/P5003.git
     cd P5003
     ```
 
@@ -84,7 +87,28 @@ Experiment parameters can be easily modified without changing the source code:
 - **`config/algorithms.json`**: Add or remove cryptographic algorithms to be tested.
 - **`config/benchmark.json`**: Adjust thread counts, iteration budgets, message sizes, and scenario-specific constants.
 
-## Citing This Work
+## License
 
-If you use this project in your research, please consider citing it. (Details to be added).
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Citation
+
+If you use this project in your research, please cite:
+
+```bibtex
+@software{p5003_pqc_benchmark,
+  author = {Chen, Xinzhe},
+  title = {P5003: Benchmarking Classical and Post-Quantum Digital Signatures},
+  year = {2025},
+  url = {https://github.com/Asleeps/P5003}
+}
+```
+
+## Contact
+
+For questions or feedback, please open an issue on [GitHub](https://github.com/Asleeps/P5003/issues).
 
