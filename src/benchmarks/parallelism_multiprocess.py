@@ -270,7 +270,9 @@ class ParallelismBenchmark:
         self.measurement_flags = self.parallel_config.get("measurement", {})
         self.powermetrics_config = self.parallel_config.get("powermetrics", {})
 
-        cache_dir = self.parallel_config.get("cache_dir", "data/cache")
+        # Use cryptography cache directory (PKCS#8 format) for multiprocess
+        base_cache_dir = self.parallel_config.get("cache_dir", "data/cache")
+        cache_dir = f"{base_cache_dir}/cryptography"
         self.cache_dir = project_root / cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 

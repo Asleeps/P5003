@@ -5,6 +5,7 @@ except (ImportError, RuntimeError) as e:
     LIBOQS_AVAILABLE = False
     _LIBOQS_ERROR = str(e)
 
+import base64
 from typing import Tuple, Dict
 from .base import SignatureAlgorithm
 
@@ -32,7 +33,9 @@ class DilithiumSignature(SignatureAlgorithm):
         if self._signer is None:
             if self._private_key is None:
                 raise ValueError("No keypair loaded")
-            self._signer = oqs.Signature(self.liboqs_name, self._private_key)
+            # Handle base64-encoded keys from cache
+            key_bytes = base64.b64decode(self._private_key) if isinstance(self._private_key, str) else self._private_key
+            self._signer = oqs.Signature(self.liboqs_name, key_bytes)
         
         return self._signer.sign(message)
     
@@ -40,8 +43,11 @@ class DilithiumSignature(SignatureAlgorithm):
         if self._public_key is None:
             raise ValueError("No public key loaded")
         
+        # Handle base64-encoded keys from cache
+        key_bytes = base64.b64decode(self._public_key) if isinstance(self._public_key, str) else self._public_key
+        
         verifier = oqs.Signature(self.liboqs_name)
-        return verifier.verify(message, signature, self._public_key)
+        return verifier.verify(message, signature, key_bytes)
     
     def get_sizes(self) -> Dict[str, int]:
         if self._signer is None:
@@ -77,7 +83,9 @@ class SPHINCSPlusSignature(SignatureAlgorithm):
         if self._signer is None:
             if self._private_key is None:
                 raise ValueError("No keypair loaded")
-            self._signer = oqs.Signature(self.liboqs_name, self._private_key)
+            # Handle base64-encoded keys from cache
+            key_bytes = base64.b64decode(self._private_key) if isinstance(self._private_key, str) else self._private_key
+            self._signer = oqs.Signature(self.liboqs_name, key_bytes)
         
         return self._signer.sign(message)
     
@@ -85,8 +93,11 @@ class SPHINCSPlusSignature(SignatureAlgorithm):
         if self._public_key is None:
             raise ValueError("No public key loaded")
         
+        # Handle base64-encoded keys from cache
+        key_bytes = base64.b64decode(self._public_key) if isinstance(self._public_key, str) else self._public_key
+        
         verifier = oqs.Signature(self.liboqs_name)
-        return verifier.verify(message, signature, self._public_key)
+        return verifier.verify(message, signature, key_bytes)
     
     def get_sizes(self) -> Dict[str, int]:
         if self._signer is None:

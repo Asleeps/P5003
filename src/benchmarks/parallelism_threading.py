@@ -2,10 +2,15 @@
 """
 Chapter 3: System-Level Parallelism Benchmarks (Threading Edition)
 
-This runner drives cryptographic sign/verify loops using Python threads and
-captures the GIL bottleneck exhibited by the `cryptography` provider stack.
-The goal is to provide realistic throughput numbers for production Python
-deployments where threads contend for a single interpreter lock.
+This runner drives cryptographic sign/verify loops using Python threads with
+GIL-releasing implementations:
+
+- Classical algorithms (RSA/ECDSA/EdDSA): Direct OpenSSL bindings via CFFI
+- PQC algorithms (Dilithium/SPHINCS+): liboqs library
+
+Both implementations release the Python GIL during cryptographic operations,
+enabling true multi-core parallelism. This provides realistic throughput
+numbers for production Python deployments with optimal threading performance.
 
 Outputs:
 - data/raw/parallelism/*.csv          → timestamped worker telemetry
@@ -22,12 +27,24 @@ import json
 import os
 import queue
 import sys
+import argparse
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+MODE_CONFIG: Dict[str, Dict[str, Any]] = {
+    "default": {
+        "label": "Python Threading (All Algorithms)",
+        "allowed_categories": None,
+        "output_stem": "parallelism_threading",
+        "thread_note": "",
+        "use_openssl_direct": True,  # Use direct OpenSSL binding (GIL-releasing for classical algos)
+        "description": "Multi-threaded benchmark with GIL-releasing implementations. Classical algorithms (RSA/ECDSA/EdDSA) use direct OpenSSL bindings via CFFI, while PQC algorithms (Dilithium/SPHINCS+) use liboqs. ALL algorithms release the GIL during cryptographic operations, enabling true multi-core parallelism and demonstrating optimal threading performance.",
+    },
+}
 
 try:
     import psutil  # type: ignore
@@ -71,14 +88,18 @@ def worker_thread(
     telemetry_queue: queue.Queue,
     ready_event: threading.Event,
     start_event: threading.Event,
+    use_openssl_direct: bool = True,
 ) -> Dict[str, Any]:
     """
     Worker thread function. Executes cryptographic operations in a tight loop.
-    The underlying libraries retain the GIL, so measured throughput is
-    intentionally GIL-constrained to reflect real deployments.
+    
+    Classical algorithms (RSA/ECDSA/EdDSA): Release GIL via OpenSSL direct binding (CFFI).
+    PQC algorithms (Dilithium/SPHINCS+): Release GIL via liboqs.
+    
+    All algorithms enable true multi-core parallelism.
     """
     try:
-        factory = AlgorithmFactory()
+        factory = AlgorithmFactory(use_openssl_direct=use_openssl_direct)
         algorithm = factory.create_algorithm(algo_type, algo_name)
         algorithm._public_key = public_key
         algorithm._private_key = private_key
@@ -123,7 +144,9 @@ def worker_thread(
                 break
 
             op_start = now
-            # NOTE: Native libraries keep the GIL here, driving the bottleneck we measure
+            # NOTE: All algorithms release GIL during cryptographic operations:
+            # - Classical: via direct OpenSSL bindings (CFFI)
+            # - PQC: via liboqs library
             if operation == "sign":
                 algorithm.sign(message)
             else:
@@ -191,7 +214,10 @@ class CPUSampler:
             return
         self.samples = []
         self._stop_event.clear()
-        # Prime the process cpu_percent measurement
+        # Prime the process cpu_percent measurement with two warm-up calls
+        # to establish baseline and stabilize measurement
+        self._process.cpu_percent(interval=None)
+        time.sleep(0.05)  # Short delay for initial measurement
         self._process.cpu_percent(interval=None)
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
@@ -208,26 +234,29 @@ class CPUSampler:
         assert psutil is not None and self._process is not None
         cpu_count = self._cpu_count or 1
         while not self._stop_event.wait(self.interval):
+            sample_start = time.time()
             # Get process-level CPU percent (can exceed 100% on multi-core)
-            process_cpu_raw = self._process.cpu_percent(interval=None)
+            # Use interval=0.05 for more responsive measurement within sampling window
+            process_cpu_raw = self._process.cpu_percent(interval=0.05)
             # Normalize to 0-100% range by dividing by CPU count
             process_cpu = process_cpu_raw / cpu_count
             # Also get per-core system-wide CPU for reference
-            percpu = psutil.cpu_percent(interval=None, percpu=True)  # type: ignore[attr-defined]
+            percpu = psutil.cpu_percent(interval=0.05, percpu=True)  # type: ignore[attr-defined]
             avg = sum(percpu) / len(percpu) if percpu else None
             self.samples.append({
-                "timestamp": time.time(),
+                "timestamp": sample_start,
                 "process_cpu": process_cpu,
                 "process_cpu_raw": process_cpu_raw,
                 "percpu": percpu,
-                "avg": avg
+                "avg": avg,
+                "sample_duration": time.time() - sample_start
             })
 
 
-class ParallelismBenchmark:
-    """Coordinator for the threading-based parallelism benchmarks."""
+class ThreadingBenchmark:
+    """Coordinator for threading-based parallelism benchmarks with configurable modes."""
 
-    def __init__(self, config_path: Optional[str] = None) -> None:
+    def __init__(self, mode_config: Dict[str, Any], config_path: Optional[str] = None) -> None:
         if config_path is None:
             config_path = str(project_root / "config" / "benchmark.json")
 
@@ -236,6 +265,16 @@ class ParallelismBenchmark:
 
         self.config = config
         self.parallel_config = config["parallelism"]
+        
+        # Initialize mode_config early (needed for cache directory selection)
+        self.mode_config = mode_config
+        self.label = mode_config["label"]
+        self.allowed_categories = mode_config.get("allowed_categories")
+        self.output_stem = mode_config.get("output_stem", "parallelism_threading")
+        self.thread_note = mode_config.get("thread_note", "")
+        self.description = mode_config.get("description", "")
+        self.use_openssl_direct = mode_config.get("use_openssl_direct", True)
+        
         self.thread_counts = self.parallel_config["thread_counts"]
         self.duration = self.parallel_config["duration_sec"]
         self.analysis_window = self.parallel_config.get("analysis_window_sec", self.duration)
@@ -245,7 +284,9 @@ class ParallelismBenchmark:
         self.measurement_flags = self.parallel_config.get("measurement", {})
         self.powermetrics_config = self.parallel_config.get("powermetrics", {})
 
-        cache_dir = self.parallel_config.get("cache_dir", "data/cache")
+        # Use separate cache directory for OpenSSL-based threading (DER format)
+        base_cache_dir = self.parallel_config.get("cache_dir", "data/cache")
+        cache_dir = f"{base_cache_dir}/openssl" if self.use_openssl_direct else f"{base_cache_dir}/cryptography"
         self.cache_dir = project_root / cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -256,7 +297,7 @@ class ParallelismBenchmark:
         self.processed_dir.mkdir(parents=True, exist_ok=True)
         self.power_dir.mkdir(parents=True, exist_ok=True)
 
-        self.factory = AlgorithmFactory()
+        self.factory = AlgorithmFactory(use_openssl_direct=self.use_openssl_direct)
         self.message = b"x" * config["experiment_params"]["message_size_bytes"]
 
     def _log_debug(self, message: str) -> None:
@@ -312,11 +353,18 @@ class ParallelismBenchmark:
 
     def run_all(self) -> Dict[str, Any]:
         print("=" * 80)
-        print("PARALLELISM THROUGHPUT BENCHMARK - THREADING MODE")
+        print(f"PARALLELISM THROUGHPUT BENCHMARK - {self.label}")
         print("=" * 80)
         print(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
+        if self.description:
+            print(self.description + "\n")
+
         algorithms = self.factory.get_all_algorithms()
+        if self.allowed_categories:
+            algorithms = [a for a in algorithms if a["category"] in self.allowed_categories]
+        if not algorithms:
+            raise RuntimeError("No algorithms match the selected category filter for this mode.")
         configs_per_algo = len(self.thread_counts) * 2
         est_time = len(algorithms) * configs_per_algo * (self.duration + self.warmup_duration + 2)
 
@@ -453,6 +501,7 @@ class ParallelismBenchmark:
                     telemetry_queue,
                     ready_events[worker_id],
                     start_event,
+                    self.use_openssl_direct,
                 )
                 futures.append(future)
 
@@ -512,24 +561,22 @@ class ParallelismBenchmark:
             csv_path,
             telemetry_records,
             system_cpu=cpu_summary.get("avg_system"),
-            avg_temperature=power_summary.get("avg_temperature_c"),
         )
         self._write_system_json(system_json_path, cpu_samples, power_summary)
 
         cpu_pct = cpu_summary.get('avg_process')
         cpu_str = f"{cpu_pct:.1f}%" if cpu_pct is not None else "N/A"
         
-        # Add GIL-bound indicator for multi-threaded runs
-        gil_indicator = " (GIL-bound)" if num_threads > 1 else ""
+        thread_note = self.thread_note if (self.thread_note and num_threads > 1) else ""
         
         if latency_stats:
             msg = (
-                f"    {num_threads:2d}t → {ops_per_sec:10.1f} ops/sec | "
+                f"    {num_threads:2d}t → {ops_per_sec:.1f} ops/sec | "
                 f"p99: {latency_stats['p99']:.2f} ms | "
-                f"CPU: {cpu_str}{gil_indicator}"
+                f"CPU: {cpu_str}{thread_note}"
             )
         else:
-            msg = f"    {num_threads:2d}t → {ops_per_sec:10.1f} ops/sec | CPU: {cpu_str}{gil_indicator}"
+            msg = f"    {num_threads:2d}t → {ops_per_sec:.1f} ops/sec | CPU: {cpu_str}{thread_note}"
         print(msg)
 
         return {
@@ -562,7 +609,6 @@ class ParallelismBenchmark:
         path: Path,
         telemetry_records: List[Dict[str, Any]],
         system_cpu: Optional[float],
-        avg_temperature: Optional[float],
     ) -> None:
         headers = [
             "timestamp",
@@ -571,7 +617,6 @@ class ParallelismBenchmark:
             "analysis_ops",
             "rss_bytes",
             "system_cpu_percent",
-            "cpu_temperature_c",
         ]
         with open(path, "w", newline="", encoding="utf-8") as fh:
             writer = csv.writer(fh)
@@ -585,7 +630,6 @@ class ParallelismBenchmark:
                         record.get("analysis_ops"),
                         record.get("rss_bytes"),
                         f"{system_cpu:.2f}" if system_cpu is not None else "",
-                        f"{avg_temperature:.2f}" if avg_temperature is not None else "",
                     ]
                 )
 
@@ -637,6 +681,9 @@ class ParallelismBenchmark:
             "warmup_duration_sec": self.warmup_duration,
             "message_size_bytes": self.config["experiment_params"]["message_size_bytes"],
             "execution_model": "threading",
+            "mode_label": self.label,
+            "category_filter": self.allowed_categories,
+            "output_stem": self.output_stem,
         }
         processed = {"metadata": metadata, "algorithms": {}}
 
@@ -677,12 +724,12 @@ class ParallelismBenchmark:
         return processed
 
     def _save_processed(self, processed: Dict[str, Any]) -> None:
-        json_path = self.processed_dir / "parallelism_threading.json"
+        json_path = self.processed_dir / f"{self.output_stem}.json"
         with open(json_path, "w", encoding="utf-8") as fh:
             json.dump(processed, fh, indent=2)
 
         # Also dump a CSV summary for spreadsheet users
-        csv_path = self.processed_dir / "parallelism_threading_summary.csv"
+        csv_path = self.processed_dir / f"{self.output_stem}_summary.csv"
         header = ["algorithm", "operation", "thread_count", "ops_per_sec", "scaling_efficiency", "p99_latency_ms", "cpu_percent"]
         with open(csv_path, "w", newline="", encoding="utf-8") as fh:
             writer = csv.writer(fh)
@@ -730,12 +777,28 @@ def format_duration(seconds: float) -> str:
     return f"{minutes}m{remaining}s"
 
 
+def run_benchmark(mode: str, config_path: Optional[str] = None) -> Dict[str, Any]:
+    mode_key = mode.lower()
+    if mode_key not in MODE_CONFIG:
+        raise ValueError(f"Unknown threading mode '{mode}'. Valid options: {', '.join(MODE_CONFIG)}")
+    benchmark = ThreadingBenchmark(MODE_CONFIG[mode_key], config_path=config_path)
+    return benchmark.run_all()
+
+
 def main() -> None:
-    benchmark = ParallelismBenchmark()
-    results = benchmark.run_all()
+    parser = argparse.ArgumentParser(description="Run threading parallelism benchmarks")
+    parser.add_argument(
+        "--config",
+        default=None,
+        help="Optional path to benchmark configuration JSON",
+    )
+    args = parser.parse_args()
+
+    results = run_benchmark("default", config_path=args.config)
 
     print("\n" + "=" * 80)
-    print("THROUGHPUT SUMMARY (THREADING MODE)")
+    label = results["metadata"].get("mode_label", "Threading Mode")
+    print(f"THROUGHPUT SUMMARY ({label})")
     print("=" * 80)
     for algo, data in results["algorithms"].items():
         if "error" in data:
@@ -748,9 +811,11 @@ def main() -> None:
         verify_ops = data["verify_ops_per_sec"].get(max_threads)
         sign_cpu = data["sign_cpu_percent"].get(max_threads)
         verify_cpu = data["verify_cpu_percent"].get(max_threads)
+        sign_cpu_str = f"{sign_cpu:.1f}%" if sign_cpu is not None else "N/A"
+        verify_cpu_str = f"{verify_cpu:.1f}%" if verify_cpu is not None else "N/A"
         print(
-            f"{algo}: Sign {sign_ops:.1f} ops/sec ({sign_eff:.1f}% eff, {sign_cpu:.1f}% CPU) | "
-            f"Verify {verify_ops:.1f} ops/sec ({verify_eff:.1f}% eff, {verify_cpu:.1f}% CPU)"
+            f"{algo}: Sign {sign_ops:.1f} ops/sec ({sign_eff:.1f}% eff, {sign_cpu_str} CPU) | "
+            f"Verify {verify_ops:.1f} ops/sec ({verify_eff:.1f}% eff, {verify_cpu_str} CPU)"
         )
 
 

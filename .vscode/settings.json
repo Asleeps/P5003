@@ -1,0 +1,12 @@
+{
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/src"
+    ],
+    "python.autoComplete.extraPaths": [
+        "${workspaceFolder}/src"
+    ],
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportAttributeAccessIssue": "none",
+        "reportOptionalMemberAccess": "none"
+    }
+}

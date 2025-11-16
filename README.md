@@ -13,7 +13,8 @@ A comprehensive benchmarking framework for classical (RSA, ECDSA, EdDSA) and pos
 ## Key Features
 
 - **Baseline Performance**: Measures latency, throughput, and memory for key generation, signing, and verification.
-- **System-Level Parallelism**: Analyzes multi-core scaling using both `threading` and `multiprocessing` to quantify the GIL's impact.
+- **System-Level Parallelism**: Analyzes multi-core scaling using both `threading` (with GIL-releasing implementations via CFFI+OpenSSL for classical algorithms and liboqs for PQC) and `multiprocessing`. Tests across `[1, 2, 4, 6, 8, 10]` workers.
+- **GIL-Free Classical Algorithms**: Direct OpenSSL bindings via CFFI enable classical algorithms (RSA/ECDSA/EdDSA) to release the Python GIL during cryptographic operations, achieving 85%+ efficiency at 2-4 threads. Performance at 8+ threads may be limited by cache contention (algorithm-specific), not GIL.
 - **Real-World Scenario Modeling**: Evaluates algorithm suitability for:
   - TLS 1.3 Handshakes (CPU and bandwidth bottlenecks)
   - JWT API Gateways (verification throughput and header size)
@@ -69,10 +70,21 @@ P5003/
 All experiments are orchestrated via scripts in the `scripts/` directory.
 
 1.  **Run Baseline & Parallelism Benchmarks:**
-    This command executes the core performance measurements as defined in `config/benchmark.json`. Results are saved to `data/raw/` and `data/processed/`.
-    ```bash
-    python -m scripts.run_all_benchmarks
-    ```
+  This command executes the core performance measurements (baseline + all parallelism modes) as defined in `config/benchmark.json`. Results are saved to `data/raw/` and `data/processed/`.
+  ```bash
+  python -m scripts.run_all_benchmarks
+  ```
+
+  To run the parallelism studies individually:
+  ```bash
+  # Threading with GIL-releasing implementations (all algorithms)
+  # Classical: CFFI + direct OpenSSL bindings
+  # PQC: liboqs library
+  python -m src.benchmarks.parallelism_threading
+
+  # Multiprocessing (process-per-worker, fully GIL-free)
+  python -m src.benchmarks.parallelism_multiprocess
+  ```
 
 2.  **Generate Reports and Figures:**
     After the benchmarks are complete, this command runs the scenario models (TLS, JWT, etc.) and generates all tables and figures for the final report, saving them to `results/`.

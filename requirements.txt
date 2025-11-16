@@ -1,8 +1,10 @@
 # Digital Signature Algorithm Performance Analysis
 # Project Dependencies
 
-# Classical Cryptography (RSA, ECDSA, EdDSA)
+# Classical Cryptography
+# Note: Uses CFFI + direct OpenSSL bindings for GIL-releasing implementations
 cryptography>=46.0.0
+cffi>=1.16.0
 
 # Post-Quantum Cryptography (Dilithium, SPHINCS+)
 # Note: Requires liboqs system library installed

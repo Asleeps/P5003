@@ -15,7 +15,7 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 Logger = Callable[[str], None]
 
@@ -103,7 +103,7 @@ class PowerMonitor:
         self._collector_thread.start()
         self._start_time = time.time()
 
-    def stop(self) -> Dict[str, Optional[float]]:
+    def stop(self) -> Dict[str, Any]:
         """Stop powermetrics sampling and return aggregated stats."""
         if not self.enabled or self._process is None:
             return {

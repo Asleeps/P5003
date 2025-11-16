@@ -4,11 +4,31 @@ from typing import List, Dict, Any
 from .classical import RSASignature, ECDSASignature, EdDSASignature
 from .post_quantum import DilithiumSignature, SPHINCSPlusSignature
 
+# Try to import OpenSSL-direct implementations (GIL-releasing)
+try:
+    from .classical_openssl import (
+        RSASignatureOpenSSL,
+        ECDSASignatureOpenSSL,
+        EdDSASignatureOpenSSL,
+        CFFI_AVAILABLE
+    )
+except ImportError:
+    CFFI_AVAILABLE = False
+
 
 class AlgorithmFactory:
     """Factory for creating signature algorithm instances from configuration."""
     
-    def __init__(self, config_path: str = None):
+    def __init__(self, config_path: str = None, use_openssl_direct: bool = True):
+        """
+        Initialize factory.
+        
+        Args:
+            config_path: Path to algorithms.json config file
+            use_openssl_direct: If True, use direct OpenSSL bindings (GIL-releasing)
+                               for classical algorithms when available. If False,
+                               use cryptography library (GIL-holding).
+        """
         if config_path is None:
             config_path = os.path.join(
                 os.path.dirname(__file__), '..', '..', 'config', 'algorithms.json'
@@ -16,33 +36,57 @@ class AlgorithmFactory:
         
         with open(config_path, 'r') as f:
             self.config = json.load(f)
+        
+        # Determine which classical implementation to use
+        self.use_openssl_direct = use_openssl_direct and CFFI_AVAILABLE
     
     def create_algorithm(self, algo_type: str, variant_name: str):
         """Create a signature algorithm instance by type and variant name."""
         
         if algo_type == 'RSA':
             variant = self._find_variant('classical', 'RSA', variant_name)
-            return RSASignature(
-                name=variant['name'],
-                security_level=variant['security_level'],
-                key_size=variant['key_size']
-            )
+            if self.use_openssl_direct:
+                return RSASignatureOpenSSL(
+                    name=variant['name'],
+                    security_level=variant['security_level'],
+                    key_size=variant['key_size']
+                )
+            else:
+                return RSASignature(
+                    name=variant['name'],
+                    security_level=variant['security_level'],
+                    key_size=variant['key_size']
+                )
         
         elif algo_type == 'ECDSA':
             variant = self._find_variant('classical', 'ECDSA', variant_name)
-            return ECDSASignature(
-                name=variant['name'],
-                security_level=variant['security_level'],
-                curve_name=variant['curve']
-            )
+            if self.use_openssl_direct:
+                return ECDSASignatureOpenSSL(
+                    name=variant['name'],
+                    security_level=variant['security_level'],
+                    curve_name=variant['curve']
+                )
+            else:
+                return ECDSASignature(
+                    name=variant['name'],
+                    security_level=variant['security_level'],
+                    curve_name=variant['curve']
+                )
         
         elif algo_type == 'EdDSA':
             variant = self._find_variant('classical', 'EdDSA', variant_name)
-            return EdDSASignature(
-                name=variant['name'],
-                security_level=variant['security_level'],
-                curve_name=variant['curve']
-            )
+            if self.use_openssl_direct:
+                return EdDSASignatureOpenSSL(
+                    name=variant['name'],
+                    security_level=variant['security_level'],
+                    curve_name=variant['curve']
+                )
+            else:
+                return EdDSASignature(
+                    name=variant['name'],
+                    security_level=variant['security_level'],
+                    curve_name=variant['curve']
+                )
         
         elif algo_type == 'Dilithium':
             variant = self._find_variant('post_quantum', 'Dilithium', variant_name)
