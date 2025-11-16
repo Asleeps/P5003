@@ -2,7 +2,8 @@
 # Project Dependencies
 
 # Classical Cryptography
-# Note: Uses CFFI + direct OpenSSL bindings for GIL-releasing implementations
+# - Baseline benchmarks: cryptography library (Python wrapper)
+# - Parallelism benchmarks: Direct OpenSSL bindings via CFFI (GIL-releasing)
 cryptography>=46.0.0
 cffi>=1.16.0
 
@@ -15,5 +16,5 @@ liboqs-python>=0.14.0
 # Data Analysis and Statistics
 numpy>=2.0.0
 
-# System telemetry
+# System Telemetry (CPU, memory, power monitoring)
 psutil>=5.9.0

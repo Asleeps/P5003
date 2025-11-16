@@ -86,10 +86,16 @@ sudo dnf install -y gcc gcc-c++ cmake liboqs-devel
 All dependencies are specified in `requirements.txt`:
 
 ```
-cryptography>=46.0.0    # Classical algorithms (RSA, ECDSA, EdDSA)
+cryptography>=46.0.0    # Baseline benchmarks (cryptography library)
+cffi>=1.16.0            # Direct OpenSSL bindings for GIL-releasing parallelism
 liboqs-python>=0.14.0   # Post-quantum algorithms (Dilithium, SPHINCS+)
 numpy>=2.0.0            # Statistical analysis
+psutil>=5.9.0           # System telemetry
 ```
+
+**Implementation Note:**
+- **Baseline benchmarks**: Use `cryptography` library (Python wrapper)
+- **Parallelism benchmarks**: Use direct OpenSSL bindings via CFFI for classical algorithms (GIL-releasing) and liboqs for PQC algorithms
 
 **Installation:**
 ```bash
@@ -398,27 +404,27 @@ cat config/algorithms.json
 cat config/benchmark.json
 ```
 
-### 2. Begin Experiments
+### 2. Run Benchmarks
 
 ```bash
-# Create a new experiment script
-vim src/benchmarks/baseline.py
-
-# Run experiments
+# Run baseline benchmarks (single-core performance)
 python -m src.benchmarks.baseline
 
-# Save results
-python -m src.benchmarks.baseline --output data/raw/baseline_results.json
+# Run parallel benchmarks (multi-core scaling)
+python -m src.benchmarks.parallelism_threading
+python -m src.benchmarks.parallelism_multiprocess
 ```
 
 ### 3. Analyze Results
 
 ```bash
-# View raw data
-cat data/raw/baseline_results.json
+# View processed summaries
+cat data/processed/baseline_summary.json
+cat data/processed/parallelism_multiprocess.json
+cat data/processed/parallelism_threading.json
 
-# Generate visualizations (when implemented)
-python scripts/generate_report.py
+# Results and visualizations are saved to results/
+ls results/
 ```
 
 ---

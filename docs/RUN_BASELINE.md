@@ -211,12 +211,12 @@ for algo, metrics in data['algorithms'].items():
     print(f"{algo}: {metrics['sign_ms_mean']:.3f}ms")
 ```
 
-### 2. Scenario Modeling (Chapters 4-7)
-The processed data feeds into:
-- TLS handshake capacity calculations
-- JWT verification throughput analysis
-- Code signing latency impact
-- DNSSEC response size modeling
+### 2. Performance Analysis
+The processed data enables:
+- Cross-algorithm latency and throughput comparisons
+- Classical vs. PQC performance trade-off analysis
+- Security level impact evaluation
+- Key/signature size vs. performance correlation
 
 ### 3. Visualization
 ```python
@@ -225,6 +225,7 @@ import matplotlib.pyplot as plt
 
 df = pd.read_csv('data/processed/baseline_summary.csv')
 df.plot(x='algorithm', y='sign_ms_mean', kind='bar')
+plt.savefig('results/baseline_signing_latency.png')
 ```
 
 ## Interrupting and Resuming

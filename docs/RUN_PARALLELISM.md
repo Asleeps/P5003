@@ -228,27 +228,25 @@ Use this to compare “ops per watt” trade-offs across algorithms or to model 
 
 ## Use Cases for Output Data
 
-### 1. TLS Server Capacity Modeling (Chapter 4)
-
+### 1. Throughput Analysis
 ```python
 import json
-with open('data/processed/parallelism.json') as f:
+with open('data/processed/parallelism_multiprocess.json') as f:
     data = json.load(f)
 
-# Calculate handshakes/sec with 8 performance cores (worker_count=8)
+# Calculate signing throughput with 8 workers
 for algo in ['RSA-3072', 'ECDSA-P256', 'Dilithium2']:
     signing_ops = data['algorithms'][algo]['sign_ops_per_sec'][str(8)]
-    print(f"{algo}: {signing_ops:.0f} handshakes/sec @ 8 workers")
+    print(f"{algo}: {signing_ops:.0f} ops/sec @ 8 workers")
 ```
 
-### 2. JWT Verification Throughput (Chapter 5)
-
+### 2. Verification Throughput
 ```python
-# API gateway with 4 workers handling JWT verification
+# Compare verification performance with 4 workers
 workers = 4
 for algo in ['ECDSA-P256', 'Ed25519', 'Dilithium2']:
     verify_ops = data['algorithms'][algo]['verify_ops_per_sec'][str(workers)]
-    print(f"{algo}: {verify_ops:.0f} requests/sec ({workers} workers)")
+    print(f"{algo}: {verify_ops:.0f} ops/sec ({workers} workers)")
 ```
 
 ### 3. Scaling + Energy Analysis
@@ -268,9 +266,11 @@ plt.xlabel('Worker Count')
 plt.ylabel('Signing Throughput (ops/sec)')
 plt.legend()
 plt.grid(True)
-plt.savefig('figures/chapter3_signing_scaling.png')
+plt.savefig('results/parallelism_signing_scaling.png')
 
 # Optional: energy per operation from JSON
+with open('data/processed/parallelism_multiprocess.json') as f:
+    data = json.load(f)
 energy = data['algorithms']['Dilithium2']['sign_energy_per_op'][str(10)]
 print(f"Dilithium2 energy/op @10 workers: {energy * 1e3:.2f} mJ")
 ```
