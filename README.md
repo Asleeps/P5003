@@ -56,7 +56,7 @@ git clone https://github.com/Asleeps/P5003.git
 cd P5003
 ```
 
-2. **Run the setup script** (creates `.venv` and installs deps, including `liboqs`)
+2. **Run the setup script** (creates `venv` and installs deps, including `liboqs`)
 
 ```bash
 bash setup.sh
@@ -72,13 +72,7 @@ source .venv/bin/activate
 
 All entrypoints live in `scripts/` and `src/benchmarks/`.
 
-### 1. Baseline and Parallelism Benchmarks
-
-Run the full experiment suite (baseline + all parallel modes) as defined in `config/benchmark.json`:
-
-```bash
-python -m scripts.run_all_benchmarks
-```
+### Baseline and Parallelism Benchmarks
 
 Run individual parallelism studies if needed:
 
