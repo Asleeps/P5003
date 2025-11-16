@@ -4,21 +4,16 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](https://www.apple.com/macos/)
 
-A comprehensive benchmarking framework for classical (RSA, ECDSA, EdDSA) and post-quantum (CRYSTALS-Dilithium, SPHINCS+) digital signature algorithms, with real-world scenario modeling for TLS, JWT, code signing, and DNSSEC.
+A reproducible benchmark suite for classical (RSA, ECDSA, EdDSA) and post-quantum (CRYSTALS‑Dilithium, SPHINCS+) digital signatures, with scenario models for TLS, JWT, code signing, and DNSSEC.
 
 ---
 
-## Key Features
+## What This Project Provides
 
-- **Baseline Performance**: Measures latency, throughput, and memory for key generation, signing, and verification.
-- **System-Level Parallelism**: Analyzes multi-core scaling using both `threading` (with GIL-releasing implementations via CFFI+OpenSSL for classical algorithms and liboqs for PQC) and `multiprocessing`. Tests across `[1, 2, 4, 6, 8, 10]` workers.
-- **GIL-Free Classical Algorithms**: Direct OpenSSL bindings via CFFI enable classical algorithms (RSA/ECDSA/EdDSA) to release the Python GIL during cryptographic operations, achieving 85%+ efficiency at 2-4 threads. Performance at 8+ threads may be limited by cache contention (algorithm-specific), not GIL.
-- **Real-World Scenario Modeling**: Evaluates algorithm suitability for:
-  - TLS 1.3 Handshakes (CPU and bandwidth bottlenecks)
-  - JWT API Gateways (verification throughput and header size)
-  - macOS Code Signing (user-perceived launch delay)
-  - DNSSEC (response size and protocol fallback)
-- **Reproducibility**: All experiments are defined by configuration files and include metadata (`git_hash`, library versions) for full data provenance.
+- **Baseline performance**: Single-core latency, throughput, and size for keygen/sign/verify.
+- **Parallel scaling**: Threading (GIL-releasing implementations) and multiprocessing benchmarks across multiple cores.
+- **Scenario modeling**: TLS 1.3, JWT API gateways, macOS code signing, and DNSSEC response sizing.
+- **Reproducibility**: All experiments defined via `config/*.json`, results stored in `data/` and `results/` with metadata.
 
 ## Project Structure
 
@@ -50,45 +45,55 @@ P5003/
 
 ### Installation
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/Asleeps/P5003.git
-    cd P5003
-    ```
+1. **Clone the repository**
 
-2.  **Run the setup script:**
-    This script will create a Python virtual environment (`.venv`), activate it, and install all required dependencies, including `liboqs`.
-    ```bash
-    bash setup.sh
-    ```
-    *If you open a new terminal, reactivate the environment with `source .venv/bin/activate`.*
+```bash
+git clone https://github.com/Asleeps/P5003.git
+cd P5003
+```
+
+2. **Run the setup script** (creates `.venv` and installs deps, including `liboqs`)
+
+```bash
+bash setup.sh
+```
+
+If you open a new terminal later, reactivate with:
+
+```bash
+source .venv/bin/activate
+```
 
 ## How to Run Experiments
 
-All experiments are orchestrated via scripts in the `scripts/` directory.
+All entrypoints live in `scripts/` and `src/benchmarks/`.
 
-1.  **Run Baseline & Parallelism Benchmarks:**
-  This command executes the core performance measurements (baseline + all parallelism modes) as defined in `config/benchmark.json`. Results are saved to `data/raw/` and `data/processed/`.
-  ```bash
-  python -m scripts.run_all_benchmarks
-  ```
+### 1. Baseline and Parallelism Benchmarks
 
-  To run the parallelism studies individually:
-  ```bash
-  # Threading with GIL-releasing implementations (all algorithms)
-  # Classical: CFFI + direct OpenSSL bindings
-  # PQC: liboqs library
-  python -m src.benchmarks.parallelism_threading
+Run the full experiment suite (baseline + all parallel modes) as defined in `config/benchmark.json`:
 
-  # Multiprocessing (process-per-worker, fully GIL-free)
-  python -m src.benchmarks.parallelism_multiprocess
-  ```
+```bash
+python -m scripts.run_all_benchmarks
+```
 
-2.  **Generate Reports and Figures:**
-    After the benchmarks are complete, this command runs the scenario models (TLS, JWT, etc.) and generates all tables and figures for the final report, saving them to `results/`.
-    ```bash
-    python -m scripts.generate_report
-    ```
+Run individual parallelism studies if needed:
+
+```bash
+# Threading with GIL-releasing implementations (OpenSSL via CFFI for classical,
+# liboqs for PQC)
+python -m src.benchmarks.parallelism_threading
+
+# Multiprocessing (one process per worker)
+python -m src.benchmarks.parallelism_multiprocess
+```
+
+### 2. Generate Scenario Reports
+
+After benchmarks complete, build the scenario models (TLS, JWT, code signing, DNSSEC) and figures:
+
+```bash
+python -m scripts.generate_report
+```
 
 ## Configuration
 
