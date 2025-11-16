@@ -6,8 +6,6 @@
 
 A comprehensive benchmarking framework for classical (RSA, ECDSA, EdDSA) and post-quantum (CRYSTALS-Dilithium, SPHINCS+) digital signature algorithms, with real-world scenario modeling for TLS, JWT, code signing, and DNSSEC.
 
-📖 **Detailed experimental design**: See [experiment_design.md](experiment_design.md)
-
 ---
 
 ## Key Features
