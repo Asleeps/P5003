@@ -77,8 +77,7 @@ All entrypoints live in `scripts/` and `src/benchmarks/`.
 Run individual parallelism studies if needed:
 
 ```bash
-# Threading with GIL-releasing implementations (OpenSSL via CFFI for classical,
-# liboqs for PQC)
+# Threading with GIL-releasing implementations (OpenSSL via CFFI for classical, liboqs for PQC)
 python -m src.benchmarks.parallelism_threading
 
 # Multiprocessing (one process per worker)
