@@ -65,7 +65,7 @@ bash setup.sh
 If you open a new terminal later, reactivate with:
 
 ```bash
-source .venv/bin/activate
+source venv/bin/activate
 ```
 
 ## How to Run Experiments
