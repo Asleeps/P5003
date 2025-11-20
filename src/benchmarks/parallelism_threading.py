@@ -426,6 +426,17 @@ class ThreadingBenchmark:
         private_key: bytes,
         signature: bytes,
     ) -> Dict[str, Any]:
+        # Pre-flight check: ensure algorithm works in this process before spawning threads
+        try:
+            check_algo = self.factory.create_algorithm(algo_type, algo_name)
+            check_algo.load_keypair(public_key, private_key)
+            # Verify we can sign and verify
+            test_sig = check_algo.sign(self.message)
+            if not check_algo.verify(self.message, test_sig):
+                raise RuntimeError("Self-verification failed")
+        except Exception as e:
+            raise RuntimeError(f"Algorithm pre-flight check failed: {e}")
+
         results: Dict[str, Dict[int, Dict[str, Any]]] = {"sign": {}, "verify": {}}
         for operation in ["sign", "verify"]:
             print(f"  {operation.capitalize()}:")

@@ -4,7 +4,7 @@
 # Classical Cryptography
 # - Baseline benchmarks: cryptography library (Python wrapper)
 # - Parallelism benchmarks: Direct OpenSSL bindings via CFFI (GIL-releasing)
-cryptography>=46.0.0
+cryptography>=42.0.0
 cffi>=1.16.0
 
 # Post-Quantum Cryptography (Dilithium, SPHINCS+)

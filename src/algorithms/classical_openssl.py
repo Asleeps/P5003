@@ -357,9 +357,14 @@ class RSASignatureOpenSSL(SignatureAlgorithm):
         lib.EVP_PKEY_set1_RSA(self._pkey, self._rsa)
     
     def __del__(self):
-        # Note: Manual cleanup removed to avoid double-free issues
-        # OpenSSL objects will be cleaned up when Python process exits
-        pass
+        # Clean up OpenSSL objects to prevent memory leaks
+        if lib and ffi:
+            if self._pkey is not None and self._pkey != ffi.NULL:
+                lib.EVP_PKEY_free(self._pkey)
+                self._pkey = None
+            if self._rsa is not None and self._rsa != ffi.NULL:
+                lib.RSA_free(self._rsa)
+                self._rsa = None
 
 
 class ECDSASignatureOpenSSL(SignatureAlgorithm):
@@ -541,9 +546,14 @@ class ECDSASignatureOpenSSL(SignatureAlgorithm):
         lib.EVP_PKEY_set1_EC_KEY(self._pkey, self._ec_key)
     
     def __del__(self):
-        # Note: Manual cleanup removed to avoid double-free issues
-        # OpenSSL objects will be cleaned up when Python process exits
-        pass
+        # Clean up OpenSSL objects to prevent memory leaks
+        if lib and ffi:
+            if self._pkey is not None and self._pkey != ffi.NULL:
+                lib.EVP_PKEY_free(self._pkey)
+                self._pkey = None
+            if self._ec_key is not None and self._ec_key != ffi.NULL:
+                lib.EC_KEY_free(self._ec_key)
+                self._ec_key = None
 
 
 class EdDSASignatureOpenSSL(SignatureAlgorithm):
@@ -694,6 +704,8 @@ class EdDSASignatureOpenSSL(SignatureAlgorithm):
         }
     
     def __del__(self):
-        # Note: Manual cleanup removed to avoid double-free issues
-        # OpenSSL objects will be cleaned up when Python process exits
-        pass
+        # Clean up OpenSSL objects to prevent memory leaks
+        if lib and ffi:
+            if self._pkey is not None and self._pkey != ffi.NULL:
+                lib.EVP_PKEY_free(self._pkey)
+                self._pkey = None

@@ -20,66 +20,18 @@ from src.utils.timer import HighPrecisionTimer
 from src.utils.stats import StatisticsCollector
 
 
-# Adaptive iteration strategy based on actual performance measurements
-# Format: (warmup, measure_iterations)
-ITERATION_STRATEGY = {
-    'RSA-3072': {'keygen': (10, 100), 'sign': (100, 1000), 'verify': (1000, 10000)},
-    'RSA-7680': {'keygen': (5, 20), 'sign': (50, 500), 'verify': (1000, 10000)},
-    'RSA-15360': {'keygen': (2, 10), 'sign': (20, 200), 'verify': (500, 5000)},
-    
-    'ECDSA-P256': {'keygen': (100, 1000), 'sign': (100, 1000), 'verify': (5000, 50000)},
-    'ECDSA-P384': {'keygen': (100, 1000), 'sign': (1000, 10000), 'verify': (1000, 10000)},
-    'ECDSA-P521': {'keygen': (100, 1000), 'sign': (1000, 10000), 'verify': (1000, 10000)},
-    
-    'Ed25519': {'keygen': (1000, 10000), 'sign': (5000, 50000), 'verify': (5000, 50000)},
-    'Ed448': {'keygen': (500, 5000), 'sign': (1000, 10000), 'verify': (1000, 10000)},
-    
-    'Dilithium2': {'keygen': (100, 1000), 'sign': (5000, 50000), 'verify': (10000, 100000)},
-    'Dilithium3': {'keygen': (500, 5000), 'sign': (5000, 50000), 'verify': (10000, 100000)},
-    'Dilithium5': {'keygen': (1000, 10000), 'sign': (5000, 50000), 'verify': (10000, 100000)},
-    
-    'SPHINCS+-SHA2-128f-simple': {'keygen': (500, 5000), 'sign': (100, 1000), 'verify': (1000, 10000)},
-    'SPHINCS+-SHA2-128s-simple': {'keygen': (50, 500), 'sign': (10, 100), 'verify': (1000, 10000)},
-    'SPHINCS+-SHA2-192f-simple': {'keygen': (500, 5000), 'sign': (100, 1000), 'verify': (1000, 10000)},
-    'SPHINCS+-SHA2-192s-simple': {'keygen': (50, 500), 'sign': (5, 50), 'verify': (1000, 10000)},
-    'SPHINCS+-SHA2-256f-simple': {'keygen': (500, 5000), 'sign': (50, 500), 'verify': (1000, 10000)},
-    'SPHINCS+-SHA2-256s-simple': {'keygen': (50, 500), 'sign': (5, 50), 'verify': (1000, 10000)},
-}
-
-# Measured single-operation latencies (in milliseconds) from test_algorithms.py
-MEASURED_LATENCIES = {
-    'RSA-3072': {'keygen': 75.186, 'sign': 6.492, 'verify': 0.102},
-    'RSA-7680': {'keygen': 5395.814, 'sign': 32.085, 'verify': 0.448},
-    'RSA-15360': {'keygen': 45707.856, 'sign': 144.768, 'verify': 1.607},
-    
-    'ECDSA-P256': {'keygen': 2.395, 'sign': 5.959, 'verify': 0.062},
-    'ECDSA-P384': {'keygen': 0.757, 'sign': 0.540, 'verify': 1.173},
-    'ECDSA-P521': {'keygen': 0.343, 'sign': 0.408, 'verify': 0.765},
-    
-    'Ed25519': {'keygen': 0.306, 'sign': 0.200, 'verify': 0.145},
-    'Ed448': {'keygen': 1.314, 'sign': 1.327, 'verify': 1.007},
-    
-    'Dilithium2': {'keygen': 8.336, 'sign': 0.069, 'verify': 0.029},
-    'Dilithium3': {'keygen': 0.495, 'sign': 0.087, 'verify': 0.029},
-    'Dilithium5': {'keygen': 0.216, 'sign': 0.177, 'verify': 0.041},
-    
-    'SPHINCS+-SHA2-128f-simple': {'keygen': 1.171, 'sign': 10.190, 'verify': 0.613},
-    'SPHINCS+-SHA2-128s-simple': {'keygen': 28.175, 'sign': 206.938, 'verify': 0.223},
-    'SPHINCS+-SHA2-192f-simple': {'keygen': 0.652, 'sign': 16.944, 'verify': 0.912},
-    'SPHINCS+-SHA2-192s-simple': {'keygen': 41.650, 'sign': 381.344, 'verify': 0.321},
-    'SPHINCS+-SHA2-256f-simple': {'keygen': 1.731, 'sign': 34.712, 'verify': 0.920},
-    'SPHINCS+-SHA2-256s-simple': {'keygen': 27.405, 'sign': 337.610, 'verify': 0.467},
-}
-
-
-def estimate_duration(algo_name: str, operation: str) -> Tuple[int, int, float]:
+def estimate_duration(algo_name: str, operation: str, config: Dict) -> Tuple[int, int, float]:
     """
     Get adaptive iteration counts and estimated duration for an algorithm operation.
     Returns: (warmup_iterations, measure_iterations, estimated_total_seconds)
     """
-    if algo_name in ITERATION_STRATEGY and algo_name in MEASURED_LATENCIES:
-        warmup, iterations = ITERATION_STRATEGY[algo_name].get(operation, (100, 1000))
-        latency_ms = MEASURED_LATENCIES[algo_name].get(operation, 1.0)
+    baseline_config = config.get('baseline', {})
+    iteration_strategy = baseline_config.get('iteration_strategy', {})
+    measured_latencies = baseline_config.get('measured_latencies_ms', {})
+
+    if algo_name in iteration_strategy and algo_name in measured_latencies:
+        warmup, iterations = iteration_strategy[algo_name].get(operation, (100, 1000))
+        latency_ms = measured_latencies[algo_name].get(operation, 1.0)
         estimated_sec = (warmup + iterations) * latency_ms / 1000.0
         return warmup, iterations, estimated_sec
     
@@ -157,7 +109,7 @@ class BaselineBenchmark:
         for algo_info in all_algos:
             algo_time = 0
             for op in ['keygen', 'sign', 'verify']:
-                _, _, est = estimate_duration(algo_info['name'], op)
+                _, _, est = estimate_duration(algo_info['name'], op, self.config)
                 algo_time += est
             algo_estimated_times[algo_info['name']] = algo_time
             total_estimated += algo_time
@@ -236,7 +188,7 @@ class BaselineBenchmark:
         
         # Measure key generation with adaptive iterations
         print(f"  ⏱  Key generation...", end='', flush=True)
-        warmup_kg, iter_kg, est_kg = estimate_duration(algo_name, 'keygen')
+        warmup_kg, iter_kg, est_kg = estimate_duration(algo_name, 'keygen', self.config)
         print(f" ({iter_kg} iterations, ~{format_duration(est_kg)})")
         keygen_metrics = self.measure_operation(
             lambda: algorithm.generate_keypair(),
@@ -248,7 +200,7 @@ class BaselineBenchmark:
         
         # Measure signing with adaptive iterations
         print(f"  ⏱  Signing...", end='', flush=True)
-        warmup_sign, iter_sign, est_sign = estimate_duration(algo_name, 'sign')
+        warmup_sign, iter_sign, est_sign = estimate_duration(algo_name, 'sign', self.config)
         print(f" ({iter_sign} iterations, ~{format_duration(est_sign)})")
         sign_metrics = self.measure_operation(
             lambda: algorithm.sign(message),
@@ -260,7 +212,7 @@ class BaselineBenchmark:
         
         # Measure verification with adaptive iterations
         print(f"  ⏱  Verification...", end='', flush=True)
-        warmup_verify, iter_verify, est_verify = estimate_duration(algo_name, 'verify')
+        warmup_verify, iter_verify, est_verify = estimate_duration(algo_name, 'verify', self.config)
         print(f" ({iter_verify} iterations, ~{format_duration(est_verify)})")
         verify_metrics = self.measure_operation(
             lambda: algorithm.verify(message, signature),
