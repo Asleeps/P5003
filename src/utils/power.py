@@ -16,6 +16,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+import platform
 
 Logger = Callable[[str], None]
 
@@ -60,14 +61,26 @@ class PowerMonitor:
         if not self.enabled:
             return
 
+        # powermetrics is macOS-only; disable elsewhere to avoid AttributeError on getuid
+        if platform.system() != "Darwin":
+            self.logger("powermetrics is only supported on macOS; disabling sampling.")
+            self.enabled = False
+            return
+
         if shutil.which(self.binary) is None:
             self.logger(f"powermetrics binary '{self.binary}' not found; disabling sampling.")
             self.enabled = False
             return
 
         # powermetrics requires elevated privileges; detect early when possible
-        if os.geteuid() != 0:
-            self.logger("powermetrics requires sudo access; disable powermetrics or re-run with sudo.")
+        try:
+            if os.geteuid() != 0:
+                self.logger("powermetrics requires sudo access; disabling sampling (rerun with sudo to enable).")
+                self.enabled = False
+                return
+        except AttributeError:
+            # get euid not available (non-POSIX); already gated by platform, but be defensive
+            self.logger("powermetrics requires POSIX getuid support; disabling sampling.")
             self.enabled = False
             return
 

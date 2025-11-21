@@ -24,6 +24,7 @@ build/
 data/raw/*.csv
 data/raw/*.json
 data/processed/*
+data/cache/*
 results/**/*
 !results/.gitkeep
 

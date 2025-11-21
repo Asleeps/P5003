@@ -23,8 +23,26 @@ class TLSScenario:
         Calculate max handshakes/sec based on signing throughput.
         Input: signing ops/sec from parallelism benchmark
         """
-        # TODO: Model server capacity
-        pass
+        if not signing_throughput:
+            raise ValueError("signing_throughput cannot be empty")
+
+        # Use best-performing worker count
+        best_threads, peak_sign_ops = max(signing_throughput.items(), key=lambda kv: kv[1])
+
+        # Baseline for efficiency calculation
+        baseline_threads = 1 if 1 in signing_throughput else min(signing_throughput)
+        baseline_ops = signing_throughput[baseline_threads]
+        efficiency = peak_sign_ops / (baseline_ops * best_threads) if baseline_ops > 0 else None
+
+        # One CertificateVerify per handshake on the server
+        return {
+            'peak_handshakes_per_sec': peak_sign_ops,
+            'best_thread_count': best_threads,
+            'baseline_ops_per_sec': baseline_ops,
+            'per_thread_efficiency': efficiency,
+            'handshake_rtt_bound_ms': 1000.0 / peak_sign_ops if peak_sign_ops > 0 else None,
+            'throughput_table': signing_throughput
+        }
     
     def model_handshake_size(self, pk_size: int, sig_size: int) -> dict:
         """

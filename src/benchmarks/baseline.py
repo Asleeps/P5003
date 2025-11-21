@@ -295,9 +295,13 @@ class BaselineBenchmark:
         
         for i in range(iterations):
             start = time.perf_counter()
-            operation()
+            result = operation()
             elapsed_ms = (time.perf_counter() - start) * 1000
             samples.append(elapsed_ms)
+
+            # Guard against operations that unexpectedly fail (e.g., verify returns False)
+            if isinstance(result, bool) and not result:
+                raise RuntimeError("Operation returned False during measurement")
             
             # Show progress
             if (i + 1) % update_interval == 0 or i == iterations - 1:

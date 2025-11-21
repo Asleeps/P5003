@@ -74,6 +74,17 @@ All entrypoints live in `scripts/` and `src/benchmarks/`.
 
 ### Baseline and Parallelism Benchmarks
 
+Quick wrappers:
+
+```bash
+# Baseline (Chapter 2)
+python scripts/run_baseline.py
+
+# Threading (default) or multiprocess throughput (Chapter 3)
+python scripts/run_parallelism.py --mode threading
+python scripts/run_parallelism.py --mode multiprocess
+```
+
 Run individual parallelism studies if needed:
 
 ```bash
@@ -115,4 +126,3 @@ If you use this project in your research, please cite:
 ## Contact
 
 For questions or feedback, please open an issue on [GitHub](https://github.com/Asleeps/P5003/issues).
-
